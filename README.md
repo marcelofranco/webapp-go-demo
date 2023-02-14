@@ -6,7 +6,7 @@ Built in the course:
 
 - Built in Go 1.18
 - Used packages:
-  - [chi](https://github.com/go-chi/chi/v5)
-  - [scs](https://github.com/alexedwards/scs/v2)
+  - [chi](https://github.com/go-chi/chi)
+  - [scs](https://github.com/alexedwards/scs)
   - [nosurf](https://github.com/justinas/nosurf)
   
