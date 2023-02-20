@@ -2,7 +2,6 @@ package forms
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -34,25 +33,37 @@ func (f *Form) Required(fields ...string) {
 }
 
 // Has checks if form field exists in post request
-func (f *Form) Has(field string, r *http.Request) bool {
-	exists := r.Form.Get(field)
-	return exists != ""
+func (f *Form) Has(field string) bool {
+	value := f.Get(field)
+	return strings.TrimSpace(value) != ""
 }
 
 // MinLenght checks for string minimal lenght
-func (f *Form) MinLenght(field string, lenght int, r *http.Request) bool {
-	valid := r.Form.Get(field)
-	if len(valid) < lenght {
-		f.Errors.Add(field, fmt.Sprintf("This field must be at least %d characters long", lenght))
+func (f *Form) MinLenght(field string, lenght int) bool {
+	if f.Has(field) {
+		valid := f.Get(field)
+		if len(valid) < lenght {
+			f.Errors.Add(field, fmt.Sprintf("This field must be at least %d characters long", lenght))
+			return false
+		}
+		return true
+	} else {
+		f.Errors.Add(field, fmt.Sprintf("Field %s not found to validate minimal lenght", field))
 		return false
 	}
-	return true
 }
 
 // IsEmail checks for valid email address
-func (f *Form) IsEmail(field string) {
-	if !govalidator.IsEmail(f.Get(field)) {
-		f.Errors.Add(field, "Invalid email address")
+func (f *Form) IsEmail(field string) bool {
+	if f.Has(field) {
+		if !govalidator.IsEmail(f.Get(field)) {
+			f.Errors.Add(field, "Invalid email address")
+			return false
+		}
+		return true
+	} else {
+		f.Errors.Add(field, fmt.Sprintf("Field %s not found to validate if is email", field))
+		return false
 	}
 }
 
