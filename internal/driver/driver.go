@@ -2,8 +2,10 @@ package driver
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
+	"github.com/marcelofranco/webapp-go-demo/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,11 @@ func ConnectSQL(dsn string) (*DB, error) {
 		panic(err)
 	}
 
+	err = runMigrations(d)
+	if err != nil {
+		panic(err)
+	}
+
 	sqlDB, err := d.DB()
 	if err != nil {
 		panic(err)
@@ -40,6 +47,7 @@ func ConnectSQL(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return dbConn, nil
 }
 
@@ -68,5 +76,55 @@ func testDB(d *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func runMigrations(d *gorm.DB) error {
+	err := d.AutoMigrate(&models.User{},
+		&models.Reservation{},
+		&models.Restriction{},
+		&models.Room{},
+		&models.RoomRestriction{})
+
+	if err != nil {
+		return err
+	}
+
+	if d.Migrator().HasTable(&models.Room{}) {
+		if err = d.First(&models.Room{}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			var rooms = []models.Room{
+				{
+					RoomName: "General's Quarters",
+				},
+				{
+					RoomName: "Major's Suite",
+				},
+			}
+			for _, r := range rooms {
+				if err = d.Create(&r).Error; err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if d.Migrator().HasTable(&models.Restriction{}) {
+		if err = d.First(&models.Restriction{}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			var restrictions = []models.Restriction{
+				{
+					RestrictionName: "Reservation",
+				},
+				{
+					RestrictionName: "Owner Block",
+				},
+			}
+			for _, rr := range restrictions {
+				if err = d.Create(&rr).Error; err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	return nil
 }

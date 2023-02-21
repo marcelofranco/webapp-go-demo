@@ -46,50 +46,7 @@
 {{define "js"}}
 <script>
     document.getElementById('check-availability-button').addEventListener(('click'), function () {
-        let html = `
-        <form id="check-availability-form" action="" method="post" novalidate class="needs-validation">
-                <div class="col">
-                    <div class="form-row" id="reservation-dates-modal">
-                        <div class="col">
-                            <input disabled required class="form-control" type="text" name="start_modal" id="start_modal" placeholder="Arrival">
-                        </div>
-                        <div class="col">
-                            <input disabled required class="form-control" type="text" name="end_modal" id="end_modal" placeholder="Departure">
-                        </div>
-                    </div>
-                </div>
-        </form>
-            `
-
-        attention.custom({
-            msg: html,
-            title: 'Choose your dates',
-            willOpen: () => {
-                const elem = document.getElementById('reservation-dates-modal');
-                const rp = new DateRangePicker(elem, {
-                    format: 'yyyy-mm-dd',
-                    showOnFocus: true,
-                });
-            },
-            didOpen: () => {
-                document.getElementById('start_modal').removeAttribute('disabled');
-                document.getElementById('end_modal').removeAttribute('disabled');
-            },
-            callback: function (result) {
-                let form = document.getElementById("check-availability-form");
-                let formData = new FormData(form);
-                formData.append("csrf_token", "{{.CSRFToken}}")
-
-                fetch('/search-availability-json', {
-                    method: "post",
-                    body: formData,
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data.ok)
-                    })
-            }
-        })
-    })
+        createReservationModal("1", {{.CSRFToken}});
+    });
 </script>
 {{end}}
