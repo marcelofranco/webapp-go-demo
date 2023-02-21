@@ -9,7 +9,7 @@ import (
 )
 
 type DB struct {
-	SQL *gorm.DB
+	SQL *sql.DB
 }
 
 var dbConn = &DB{}
@@ -34,7 +34,7 @@ func ConnectSQL(dsn string) (*DB, error) {
 	sqlDB.SetMaxIdleConns(maxIdleDbConn)
 	sqlDB.SetConnMaxLifetime(maxDbLifetime)
 
-	dbConn.SQL = d
+	dbConn.SQL = sqlDB
 
 	err = testDB(sqlDB)
 	if err != nil {

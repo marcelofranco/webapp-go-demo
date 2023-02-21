@@ -29,11 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sqlDb, err := db.SQL.DB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sqlDb.Close()
+	defer db.SQL.Close()
 
 	// db, err := connectDB()
 	// if err != nil {

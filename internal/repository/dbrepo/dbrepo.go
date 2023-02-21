@@ -1,17 +1,18 @@
 package dbrepo
 
 import (
+	"database/sql"
+
 	"github.com/marcelofranco/webapp-go-demo/internal/config"
 	"github.com/marcelofranco/webapp-go-demo/internal/repository"
-	"gorm.io/gorm"
 )
 
 type postgresDBRepo struct {
 	App *config.AppConfig
-	DB  *gorm.DB
+	DB  *sql.DB
 }
 
-func NewPostgresRepo(a *config.AppConfig, conn *gorm.DB) repository.DatabaseRepo {
+func NewPostgresRepo(a *config.AppConfig, conn *sql.DB) repository.DatabaseRepo {
 	return &postgresDBRepo{
 		App: a,
 		DB:  conn,

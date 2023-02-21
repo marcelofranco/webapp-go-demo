@@ -17,6 +17,8 @@ import (
 var functions = template.FuncMap{}
 
 var app *config.AppConfig
+
+// var pathToTemplates = "./../../templates" //when need to debug
 var pathToTemplates = "./templates"
 
 // NewTemplates sets config for template package
