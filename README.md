@@ -9,4 +9,9 @@ Built in the course:
   - [chi](https://github.com/go-chi/chi)
   - [scs](https://github.com/alexedwards/scs)
   - [nosurf](https://github.com/justinas/nosurf)
+  - [gorm](https://github.com/go-gorm/gorm)
+  - [govalidator](https://github.com/asaskevich/govalidator)
+
   
+## TODO
+Build the administration area
