@@ -435,7 +435,7 @@ func (m *Repository) PostSignUp(w http.ResponseWriter, r *http.Request) {
 	form.ValidPassword("password")
 
 	_, err := m.DB.GetUserByEmail(user.Email)
-	if err == nil {
+	if form.Valid() && err == nil {
 		form.Errors.Add("email", "Email already registered")
 	}
 
@@ -484,7 +484,7 @@ func (m *Repository) Signin(w http.ResponseWriter, r *http.Request) {
 
 	id, _, err := m.DB.Authenticate(user.Email, user.Password)
 	if err != nil {
-		m.App.Session.Put(r.Context(), "error", "Can't insert user")
+		m.App.Session.Put(r.Context(), "error", "Unauthorized user, check if your email and/or password is correct")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -519,7 +519,7 @@ func (m *Repository) BookedRooms(w http.ResponseWriter, r *http.Request) {
 
 	reservations, err := m.DB.GetReservationsByUser(user.Email)
 	if err != nil {
-		m.App.Session.Put(r.Context(), "error", "Can't find user reservations")
+		m.App.Session.Put(r.Context(), "error", "You don't have booked rooms")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}

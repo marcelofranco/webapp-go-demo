@@ -14,11 +14,6 @@ import (
 	"github.com/marcelofranco/webapp-go-demo/internal/models"
 )
 
-type postData struct {
-	key   string
-	value string
-}
-
 var tests = []struct {
 	name               string
 	url                string
@@ -31,22 +26,6 @@ var tests = []struct {
 	{"majors-suite", "/majors-suite", "GET", http.StatusOK},
 	{"get-search-availability", "/search-availability", "GET", http.StatusOK},
 	{"contact", "/contact", "GET", http.StatusOK},
-	// {"get-make-reservation", "/make-reservation", "GET", []postData{}, http.StatusOK},
-	// {"reservation-summary", "/reservation-summary", "GET", []postData{}, http.StatusOK},
-	// {"post-search-availability", "/search-availability", "POST", []postData{
-	// 	{key: "start_date", value: "2020-01-01"},
-	// 	{key: "end_date", value: "2020-01-02"},
-	// }, http.StatusOK},
-	// {"post-search-availability-json", "/search-availability-json", "POST", []postData{
-	// 	{key: "start_date", value: "2020-01-01"},
-	// 	{key: "end_date", value: "2020-01-02"},
-	// }, http.StatusOK},
-	// {"post-make-reservation", "/make-reservation", "POST", []postData{
-	// 	{key: "first_name", value: "John"},
-	// 	{key: "last_name", value: "West"},
-	// 	{key: "email", value: "me@here.com"},
-	// 	{key: "phone", value: "99999-9999"},
-	// }, http.StatusOK},
 }
 
 func TestHandlers(t *testing.T) {
@@ -215,7 +194,7 @@ var postReservationTests = []struct {
 			"phone":      {"555-555-5555"},
 			"room_id":    {"1"},
 		},
-		expectedResponseCode: http.StatusSeeOther,
+		expectedResponseCode: http.StatusOK,
 		expectedHTML:         `action="/make-reservation"`,
 		expectedLocation:     "",
 	},
@@ -629,6 +608,325 @@ func TestRepository_AvailabilityJSON(t *testing.T) {
 
 		if j.OK != e.expectedOK {
 			t.Errorf("%s: expected %v but got %v", e.name, e.expectedOK, j.OK)
+		}
+	}
+}
+
+var postSignUp = []struct {
+	name                 string
+	postedData           url.Values
+	expectedResponseCode int
+	expectedLocation     string
+	expectedHTML         string
+}{
+	{
+		name: "valid-form",
+		postedData: url.Values{
+			"first_name": {"John"},
+			"last_name":  {"Smith"},
+			"email":      {"test@here.com"},
+			"password":   {"12345Q@e"},
+		},
+		expectedResponseCode: http.StatusSeeOther,
+		expectedLocation:     "/",
+		expectedHTML:         "",
+	},
+	{
+		name:                 "empty-form",
+		postedData:           nil,
+		expectedResponseCode: http.StatusTemporaryRedirect,
+		expectedLocation:     "/",
+		expectedHTML:         "",
+	},
+	{
+		name: "invalid-email-form",
+		postedData: url.Values{
+			"first_name": {"John"},
+			"last_name":  {"Smith"},
+			"email":      {"notanemail"},
+			"password":   {"12345Q@e"},
+		},
+		expectedResponseCode: http.StatusOK,
+		expectedLocation:     "",
+		expectedHTML:         `action="/sign-up"`,
+	},
+	{
+		name: "already-exist-user",
+		postedData: url.Values{
+			"first_name": {"John"},
+			"last_name":  {"Smith"},
+			"email":      {"me@here.com"},
+			"password":   {"12345Q@e"},
+		},
+		expectedResponseCode: http.StatusOK,
+		expectedLocation:     "",
+		expectedHTML:         `action="/sign-up"`,
+	},
+	{
+		name: "database-error",
+		postedData: url.Values{
+			"first_name": {"Error"},
+			"last_name":  {"Smith"},
+			"email":      {"test@here.com"},
+			"password":   {"12345Q@e"},
+		},
+		expectedResponseCode: http.StatusTemporaryRedirect,
+		expectedLocation:     "/",
+		expectedHTML:         "",
+	},
+}
+
+func TestRepository_PostSignUp(t *testing.T) {
+	for _, e := range postSignUp {
+		var req *http.Request
+		if e.postedData != nil {
+			req, _ = http.NewRequest("POST", "/sign-up", strings.NewReader(e.postedData.Encode()))
+		} else {
+			req, _ = http.NewRequest("POST", "/sign-up", nil)
+		}
+		ctx := getCtx(req)
+		req = req.WithContext(ctx)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+
+		handler := http.HandlerFunc(Repo.PostSignUp)
+
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedResponseCode {
+			t.Errorf("%s returned wrong response code: got %d, wanted %d", e.name, rr.Code, e.expectedResponseCode)
+		}
+
+		if e.expectedLocation != "" {
+			// get the URL from test
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc.String())
+			}
+		}
+
+		if e.expectedHTML != "" {
+			// read the response body into a string
+			html := rr.Body.String()
+			if !strings.Contains(html, e.expectedHTML) {
+				t.Errorf("failed %s: expected to find %s but did not", e.name, e.expectedHTML)
+			}
+		}
+	}
+}
+
+var getSignUp = []struct {
+	name               string
+	expectedStatusCode int
+	expectedLocation   string
+	expectedHTML       string
+}{
+	{
+		name:               "enter-signup",
+		expectedStatusCode: http.StatusOK,
+		expectedHTML:       `action="/sign-up"`,
+	},
+}
+
+func TestSignUp(t *testing.T) {
+	for _, e := range getSignUp {
+		req, _ := http.NewRequest("GET", "/sign-up", nil)
+		ctx := getCtx(req)
+		req = req.WithContext(ctx)
+
+		rr := httptest.NewRecorder()
+
+		handler := http.HandlerFunc(Repo.SignUp)
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedStatusCode {
+			t.Errorf("%s returned wrong response code: got %d, wanted %d", e.name, rr.Code, e.expectedStatusCode)
+		}
+
+		if e.expectedLocation != "" {
+			// get the URL from test
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc.String())
+			}
+		}
+
+		if e.expectedHTML != "" {
+			// read the response body into a string
+			html := rr.Body.String()
+			if !strings.Contains(html, e.expectedHTML) {
+				t.Errorf("failed %s: expected to find %s but did not", e.name, e.expectedHTML)
+			}
+		}
+	}
+}
+
+var postSignIn = []struct {
+	name                 string
+	postedData           url.Values
+	expectedResponseCode int
+	expectedLocation     string
+	expectedHTML         string
+}{
+	{
+		name: "valid-form",
+		postedData: url.Values{
+			"username_login": {"me@here.com"},
+			"password_login": {"12345Q@e"},
+		},
+		expectedResponseCode: http.StatusSeeOther,
+		expectedLocation:     "/",
+	},
+	{
+		name:                 "empty-form",
+		postedData:           nil,
+		expectedResponseCode: http.StatusTemporaryRedirect,
+		expectedLocation:     "/",
+	},
+	{
+		name: "unauthorized-form",
+		postedData: url.Values{
+			"username_login": {"me@here.com"},
+			"password_login": {"unauthorized"},
+		},
+		expectedResponseCode: http.StatusTemporaryRedirect,
+		expectedLocation:     "/",
+	},
+}
+
+func TestRepository_PostSignIn(t *testing.T) {
+	for _, e := range postSignIn {
+		var req *http.Request
+		if e.postedData != nil {
+			req, _ = http.NewRequest("POST", "/sign-up", strings.NewReader(e.postedData.Encode()))
+		} else {
+			req, _ = http.NewRequest("POST", "/sign-up", nil)
+		}
+		ctx := getCtx(req)
+		req = req.WithContext(ctx)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+
+		handler := http.HandlerFunc(Repo.Signin)
+
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedResponseCode {
+			t.Errorf("%s returned wrong response code: got %d, wanted %d", e.name, rr.Code, e.expectedResponseCode)
+		}
+
+		if e.expectedLocation != "" {
+			// get the URL from test
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc.String())
+			}
+		}
+	}
+}
+
+var getLogout = []struct {
+	name               string
+	expectedStatusCode int
+	expectedLocation   string
+	expectedHTML       string
+}{
+	{
+		name:               "enter-logout",
+		expectedStatusCode: http.StatusSeeOther,
+	},
+}
+
+func TestLogout(t *testing.T) {
+	for _, e := range getLogout {
+		req, _ := http.NewRequest("GET", "/logout", nil)
+		ctx := getCtx(req)
+		req = req.WithContext(ctx)
+
+		rr := httptest.NewRecorder()
+
+		handler := http.HandlerFunc(Repo.Logout)
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedStatusCode {
+			t.Errorf("%s returned wrong response code: got %d, wanted %d", e.name, rr.Code, e.expectedStatusCode)
+		}
+
+		if e.expectedLocation != "" {
+			// get the URL from test
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc.String())
+			}
+		}
+
+		if e.expectedHTML != "" {
+			// read the response body into a string
+			html := rr.Body.String()
+			if !strings.Contains(html, e.expectedHTML) {
+				t.Errorf("failed %s: expected to find %s but did not", e.name, e.expectedHTML)
+			}
+		}
+	}
+}
+
+var getBookedRooms = []struct {
+	name               string
+	userID             int
+	expectedStatusCode int
+	expectedLocation   string
+	expectedHTML       string
+}{
+	{
+		name:               "valid-user-and-reservations",
+		userID:             1,
+		expectedStatusCode: http.StatusOK,
+	},
+	{
+		name:               "user-not-in-session",
+		userID:             0,
+		expectedStatusCode: http.StatusTemporaryRedirect,
+		expectedLocation:   "/",
+	},
+	{
+		name:               "invalid-user",
+		userID:             2,
+		expectedStatusCode: http.StatusTemporaryRedirect,
+	},
+	{
+		name:               "valid-user-no-reservations",
+		userID:             3,
+		expectedStatusCode: http.StatusTemporaryRedirect,
+		expectedLocation:   "/",
+	},
+}
+
+func TestBookedRooms(t *testing.T) {
+	for _, e := range getBookedRooms {
+		req, _ := http.NewRequest("GET", "/booked-rooms", nil)
+		ctx := getCtx(req)
+		req = req.WithContext(ctx)
+
+		rr := httptest.NewRecorder()
+		if e.userID > 0 {
+			session.Put(ctx, "user_id", e.userID)
+		}
+
+		handler := http.HandlerFunc(Repo.BookedRooms)
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedStatusCode {
+			t.Errorf("%s returned wrong response code: got %d, wanted %d", e.name, rr.Code, e.expectedStatusCode)
+		}
+
+		if e.expectedLocation != "" {
+			// get the URL from test
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc.String())
+			}
 		}
 	}
 }

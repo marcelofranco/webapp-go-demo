@@ -21,7 +21,9 @@ import (
 	"github.com/marcelofranco/webapp-go-demo/internal/render"
 )
 
-var functions = template.FuncMap{}
+var functions = template.FuncMap{
+	"humanDate": render.HumanDate,
+}
 var app config.AppConfig
 var session *scs.SessionManager
 var pathToTemplates = "./../../templates"

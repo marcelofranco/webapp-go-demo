@@ -82,17 +82,29 @@ func (m *testDBRepo) GetRoomByID(id int) (models.Room, error) {
 // GetUserByID returns a user by id
 func (m *testDBRepo) GetUserByID(id int) (models.User, error) {
 	var u models.User
+	if id == 2 {
+		return u, errors.New("invalid user")
+	}
+	if id == 3 {
+		u.Email = "noreservation@here.com"
+	}
 	return u, nil
 }
 
 // GetUserByEmail returns a user by id
 func (m *testDBRepo) GetUserByEmail(email string) (models.User, error) {
 	var u models.User
+	if email == "test@here.com" {
+		return u, errors.New("email not exist")
+	}
 	return u, nil
 }
 
 // CreateUser updates a user in the database
 func (m *testDBRepo) CreateUser(u models.User) (int, error) {
+	if u.FirstName == "Error" {
+		return 0, errors.New("error create user")
+	}
 	return 0, nil
 }
 
@@ -103,6 +115,9 @@ func (m *testDBRepo) UpdateUser(u models.User) error {
 
 // Authenticate authenticates a user
 func (m *testDBRepo) Authenticate(email, testPassword string) (int, string, error) {
+	if testPassword == "unauthorized" {
+		return 0, "unauthorized", errors.New("unauthorized")
+	}
 	return 1, "hashedPassword", nil
 }
 
@@ -162,5 +177,14 @@ func (m *testDBRepo) DeleteBlockByID(id int) error {
 
 func (m *testDBRepo) GetReservationsByUser(email string) ([]models.Reservation, error) {
 	var reservations []models.Reservation
+	if email == "noreservation@here.com" {
+		return reservations, errors.New("no reservations")
+	}
+
+	reservation := models.Reservation{
+		StartDate: time.Now(),
+		EndDate:   time.Now().Add(24 * time.Hour),
+	}
+	reservations = append(reservations, reservation)
 	return reservations, nil
 }
