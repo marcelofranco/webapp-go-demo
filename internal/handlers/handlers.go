@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -122,11 +123,16 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 	if !form.Valid() {
 		data := make(map[string]interface{})
 		data["reservation"] = reservation
-		m.App.Session.Put(r.Context(), "error", "Invalid data")
-		http.Error(w, "Invalid data", http.StatusSeeOther)
+
+		// add these lines to fix bad data error
+		stringMap := make(map[string]string)
+		stringMap["start_date"] = reservation.StartDate.Format("2006-01-02")
+		stringMap["end_date"] = reservation.EndDate.Format("2006-01-02")
+
 		render.RenderTemplate(w, r, "make-reservation.page.tmpl", &models.TemplateData{
-			Form: form,
-			Data: data,
+			Form:      form,
+			Data:      data,
+			StringMap: stringMap, // fixes error after invalid data
 		})
 		return
 	}
@@ -152,6 +158,37 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
+
+	htmlMsg := fmt.Sprintf(`
+	<strong>Reservation Confirmation</strong><br>
+	Dear, %s:<br>
+	This is to confirm your reservation from %s to %s.
+	`, reservation.FirstName, reservation.StartDate.Format("2006-01-02"), reservation.EndDate.Format("2006-01-02"))
+
+	//SEND NOTIFICATIONS
+	msg := models.MailData{
+		From:     "me@here.com",
+		To:       reservation.Email,
+		Subject:  "Reservation confirmation",
+		Content:  htmlMsg,
+		Template: "basic.html",
+	}
+	m.App.MailChan <- msg
+
+	htmlMsg = fmt.Sprintf(`
+	<strong>Room Reserved</strong><br>
+	Dear, Owner:<br>
+	This is to inform that room %s was reserved from %s to %s.
+	`, reservation.Room.RoomName, reservation.StartDate.Format("2006-01-02"), reservation.EndDate.Format("2006-01-02"))
+
+	//SEND NOTIFICATIONS
+	msg = models.MailData{
+		From:    "me@here.com",
+		To:      "owner@room.com",
+		Subject: "Room Reserved",
+		Content: htmlMsg,
+	}
+	m.App.MailChan <- msg
 
 	m.App.Session.Put(r.Context(), "reservation", reservation)
 
@@ -373,4 +410,60 @@ func (m *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	m.App.Session.Put(r.Context(), "reservation", res)
 
 	http.Redirect(w, r, "/make-reservation", http.StatusSeeOther)
+}
+
+func (m *Repository) PostSignUp(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		m.App.Session.Put(r.Context(), "error", "can't parse form")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	var user models.User
+	user.FirstName = r.Form.Get("first_name")
+	user.LastName = r.Form.Get("last_name")
+	user.Email = r.Form.Get("email")
+	user.Password = r.Form.Get("password")
+
+	form := forms.New(r.PostForm)
+
+	form.Required("first_name", "last_name", "email", "password")
+	form.MinLenght("first_name", 3)
+	form.MinLenght("password", 8)
+	form.IsEmail("email")
+	form.ValidPassword("password")
+
+	_, err := m.DB.GetUserByEmail(user.Email)
+	if err == nil {
+		form.Errors.Add("email", "Email already registered")
+	}
+
+	if !form.Valid() {
+		data := make(map[string]interface{})
+		data["user"] = user
+
+		render.RenderTemplate(w, r, "register.page.tmpl", &models.TemplateData{
+			Form: form,
+			Data: data,
+		})
+		return
+	}
+
+	_, err = m.DB.CreateUser(user)
+	if err != nil {
+		m.App.Session.Put(r.Context(), "error", "Can't insert user")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	m.App.Session.Put(r.Context(), "flash", "Register successfully, you can login now.")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// Reservation renders the make a reservation page
+func (m *Repository) SignUp(w http.ResponseWriter, r *http.Request) {
+	render.RenderTemplate(w, r, "register.page.tmpl", &models.TemplateData{
+		Form: forms.New(nil),
+	})
 }

@@ -31,14 +31,9 @@ func main() {
 	}
 	defer db.SQL.Close()
 
-	// db, err := connectDB()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer func() {
-	// 	dbInstance, _ := db.DB()
-	// 	_ = dbInstance.Close()
-	// }()
+	defer close(app.MailChan)
+	log.Println("Starting mail service")
+	ListenForMail()
 
 	log.Printf("Starting application on port %s\n", portNumber)
 
@@ -56,6 +51,13 @@ func main() {
 
 func run() (*driver.DB, error) {
 	gob.Register(models.Reservation{})
+	gob.Register(models.User{})
+	gob.Register(models.Room{})
+	gob.Register(models.Restriction{})
+	gob.Register(models.RoomRestriction{})
+
+	mailChan := make(chan models.MailData)
+	app.MailChan = mailChan
 
 	app.InProduction = false
 

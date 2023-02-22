@@ -30,6 +30,10 @@ var errorLog *log.Logger
 
 func TestMain(m *testing.M) {
 	gob.Register(models.Reservation{})
+	gob.Register(models.User{})
+	gob.Register(models.Room{})
+	gob.Register(models.Restriction{})
+	gob.Register(models.RoomRestriction{})
 
 	app.InProduction = false
 
@@ -46,6 +50,12 @@ func TestMain(m *testing.M) {
 	session.Cookie.Secure = app.InProduction
 	app.Session = session
 
+	mailChan := make(chan models.MailData)
+	app.MailChan = mailChan
+	defer close(mailChan)
+
+	listenForMail()
+
 	tc, err := CreateTestTemplateCache()
 	if err != nil {
 		log.Fatal(err)
@@ -59,6 +69,14 @@ func TestMain(m *testing.M) {
 	render.NewTemplates(&app)
 
 	os.Exit(m.Run())
+}
+
+func listenForMail() {
+	go func() {
+		for {
+			_ = <-app.MailChan
+		}
+	}()
 }
 
 func getRoutes() http.Handler {

@@ -3,6 +3,7 @@ package dbrepo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -191,6 +192,70 @@ func (m *postgresDBRepo) GetUserByID(id int) (models.User, error) {
 	}
 
 	return u, nil
+}
+
+// GetUserByEmail returns a user by email
+func (m *postgresDBRepo) GetUserByEmail(email string) (models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `select id, first_name, last_name, email, password, access_level, created_at, updated_at
+			from users where email = $1`
+
+	row := m.DB.QueryRowContext(ctx, query, email)
+
+	var u models.User
+	err := row.Scan(
+		&u.ID,
+		&u.FirstName,
+		&u.LastName,
+		&u.Email,
+		&u.Password,
+		&u.AccessLevel,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+
+	if err != nil {
+		return u, err
+	}
+
+	return u, nil
+}
+
+// CreateUser create a user in the database
+func (m *postgresDBRepo) CreateUser(u models.User) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var newID int
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return 0, err
+	}
+
+	stmt := `
+	INSERT INTO public.users
+	(created_at, updated_at, "name", first_name, last_name, email, "password", access_level)
+	VALUES($1, $2, $3, $4, $5, $6, $7, 0) returning id
+`
+
+	err = m.DB.QueryRowContext(ctx, stmt,
+		time.Now(),
+		time.Now(),
+		fmt.Sprintf("%s %s", u.FirstName, u.LastName),
+		u.FirstName,
+		u.LastName,
+		u.Email,
+		hashedPassword,
+	).Scan(&newID)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return newID, nil
 }
 
 // UpdateUser updates a user in the database

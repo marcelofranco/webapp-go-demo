@@ -85,6 +85,17 @@ func (m *testDBRepo) GetUserByID(id int) (models.User, error) {
 	return u, nil
 }
 
+// GetUserByEmail returns a user by id
+func (m *testDBRepo) GetUserByEmail(email string) (models.User, error) {
+	var u models.User
+	return u, nil
+}
+
+// CreateUser updates a user in the database
+func (m *testDBRepo) CreateUser(u models.User) (int, error) {
+	return 0, nil
+}
+
 // UpdateUser updates a user in the database
 func (m *testDBRepo) UpdateUser(u models.User) error {
 	return nil

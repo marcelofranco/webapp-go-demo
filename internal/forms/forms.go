@@ -67,6 +67,32 @@ func (f *Form) IsEmail(field string) bool {
 	}
 }
 
+// ValidPassword check if password fullfil needs
+func (f *Form) ValidPassword(field string) bool {
+	if f.Has(field) {
+		var pass = f.Get(field)
+		switch {
+		case !govalidator.HasUpperCase(pass):
+			f.Errors.Add(field, "Needs to have at least 1 uppercase letter")
+			return false
+		case !govalidator.Matches(pass, `\d+`):
+			f.Errors.Add(field, "Needs to have at least 1 number")
+			return false
+		case !govalidator.Matches(pass, `.*[[:lower:]]+.*`):
+			f.Errors.Add(field, "Needs to have at least 1 lowercase letter")
+			return false
+		case !govalidator.Matches(pass, `.*\W`):
+			f.Errors.Add(field, "Needs to have at least 1 special character")
+			return false
+		default:
+			return true
+		}
+	} else {
+		f.Errors.Add(field, fmt.Sprintf("Field %s not found", field))
+		return false
+	}
+}
+
 // Valid returns true if form has no error, otherwise false
 func (f *Form) Valid() bool {
 	return len(f.Errors) == 0
