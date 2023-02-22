@@ -1,0 +1,43 @@
+{{template "base" .}}
+
+{{define "content"}}
+{{$res := index .Data "reservations"}}
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <h1 class="mt-5">Booked Rooms</h1>
+
+            <hr>
+
+
+            <table class="table table-striped">
+                <theader>
+                    <tr>
+                        <th>Room</th>
+                        <th>Arrival</th>
+                        <th>Departure</th>
+                        <th>Processed</th>
+                    </tr>
+                </theader>
+                <tbody>
+                    {{range $res}}
+                    <tr>
+                        <td>{{.Room.RoomName}}</td>
+                        <td>{{humanDate .StartDate}}</td>
+                        <td>{{humanDate .EndDate}}</td>
+                        {{if eq .Processed 0}}
+                        <td>Processing</td>
+                        {{else}}
+                        <td>Booked</td>
+                        {{end}}
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+
+
+        </div>
+    </div>
+
+</div>
+{{end}}

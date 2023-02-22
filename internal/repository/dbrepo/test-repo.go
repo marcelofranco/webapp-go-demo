@@ -159,3 +159,8 @@ func (m *testDBRepo) InsertBlockForRoom(id int, startDate time.Time) error {
 func (m *testDBRepo) DeleteBlockByID(id int) error {
 	return nil
 }
+
+func (m *testDBRepo) GetReservationsByUser(email string) ([]models.Reservation, error) {
+	var reservations []models.Reservation
+	return reservations, nil
+}

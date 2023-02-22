@@ -412,6 +412,7 @@ func (m *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/make-reservation", http.StatusSeeOther)
 }
 
+// PostSignUp handles post sign up request
 func (m *Repository) PostSignUp(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		m.App.Session.Put(r.Context(), "error", "can't parse form")
@@ -461,9 +462,81 @@ func (m *Repository) PostSignUp(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Reservation renders the make a reservation page
+// SignUp renders the sign up page
 func (m *Repository) SignUp(w http.ResponseWriter, r *http.Request) {
 	render.RenderTemplate(w, r, "register.page.tmpl", &models.TemplateData{
 		Form: forms.New(nil),
+	})
+}
+
+func (m *Repository) Signin(w http.ResponseWriter, r *http.Request) {
+	_ = m.App.Session.RenewToken(r.Context())
+
+	if err := r.ParseForm(); err != nil {
+		m.App.Session.Put(r.Context(), "error", "can't parse form")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	var user models.User
+	user.Email = r.Form.Get("username_login")
+	user.Password = r.Form.Get("password_login")
+
+	id, _, err := m.DB.Authenticate(user.Email, user.Password)
+	if err != nil {
+		m.App.Session.Put(r.Context(), "error", "Can't insert user")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	m.App.Session.Put(r.Context(), "user_id", id)
+	m.App.Session.Put(r.Context(), "flash", "Logged in successfully.")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (m *Repository) Logout(w http.ResponseWriter, r *http.Request) {
+	_ = m.App.Session.Destroy(r.Context())
+	_ = m.App.Session.RenewToken(r.Context())
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (m *Repository) BookedRooms(w http.ResponseWriter, r *http.Request) {
+	userID, ok := m.App.Session.Get(r.Context(), "user_id").(int)
+	if !ok {
+		m.App.Session.Put(r.Context(), "error", "Can't get user from session")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	user, err := m.DB.GetUserByID(userID)
+	if err != nil {
+		m.App.Session.Put(r.Context(), "error", "Can't find user")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	reservations, err := m.DB.GetReservationsByUser(user.Email)
+	if err != nil {
+		m.App.Session.Put(r.Context(), "error", "Can't find user reservations")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	stringMap := make(map[string]string)
+	for _, r := range reservations {
+		sd := r.StartDate.Format("2006-01-02")
+		ed := r.EndDate.Format("2006-01-02")
+		stringMap[fmt.Sprintf("start_date%d", r.ID)] = sd
+		stringMap[fmt.Sprintf("end_date%d", r.ID)] = ed
+	}
+
+	data := make(map[string]interface{})
+	data["reservations"] = reservations
+
+	render.RenderTemplate(w, r, "booked-rooms.page.tmpl", &models.TemplateData{
+		Data:      data,
+		StringMap: stringMap,
 	})
 }
